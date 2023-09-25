@@ -16,6 +16,8 @@ public class SolarmanV5Client : ISolarmanV5Client
     private readonly ProductInfoSettings _productInfoSettings;
     private readonly RealTimeDataSettings _realTimeDataSettings;
 
+    public Memory<byte> ResponseData { get; private set; }
+
     public SolarmanV5Client(IOptions<LoggerSettings> loggerSettings, IOptions<AppSettings> inverterSettings,
         IOptions<ProductInfoSettings> productInfoSettings, IOptions<RealTimeDataSettings> realTimeDataSettings)
     {
@@ -24,10 +26,30 @@ public class SolarmanV5Client : ISolarmanV5Client
         _productInfoSettings = productInfoSettings.Value;
         _realTimeDataSettings = realTimeDataSettings.Value;
     }
+    
+    public async Task<ProtocolResponse> SendAsync(Memory<byte> modbusFrame, CancellationToken cancellationToken = default)
+    {
+        using var client = await GetClientAsync(cancellationToken);
+
+        // Prepares the data to send.
+        var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, modbusFrame);
+
+        // Send data to the server
+        var stream = client.GetStream();
+        await stream.WriteAsync(dataBytes, cancellationToken: cancellationToken);
+
+        // Receives the response back from the server.
+        var buffer = new Memory<byte>(new byte[1024]);
+        var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+
+        ResponseData = buffer[..bytesRead];
+        
+        return ProtocolResponse.FromMemory(ResponseData);
+    }
 
     public byte[] GetHwData()
     {
-        using var client = GetClient();
+        using var client = GetClientAsync().Result;
 
         // Prepares the data to send.
         var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadProductInformation(_productInfoSettings.StartRegister,
@@ -47,7 +69,7 @@ public class SolarmanV5Client : ISolarmanV5Client
     
     public (byte[] Part1, byte[] Part2) GetRealtimeData()
     {
-        using var client = GetClient();
+        using var client = GetClientAsync().Result;
 
         // Prepares the data to send.
         var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadRealtimeData(_realTimeDataSettings.InverterStartRegister,
@@ -77,7 +99,7 @@ public class SolarmanV5Client : ISolarmanV5Client
         return (receivedBytes, receivedBytes2);
     }
 
-    private TcpClient GetClient()
+    private async Task<TcpClient> GetClientAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -92,11 +114,11 @@ public class SolarmanV5Client : ISolarmanV5Client
             };
 
             // Establish a connection.
-            client.Connect(ipAddress, _loggerSettings.Port);
+            await client.ConnectAsync(ipAddress, _loggerSettings.Port, cancellationToken);
 
             return client;
         }
-        catch (SocketException e)
+        catch (SocketException ex)
         {
             Console.WriteLine("Could not open socket");
             throw;

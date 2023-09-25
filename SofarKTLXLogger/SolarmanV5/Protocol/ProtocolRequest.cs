@@ -10,9 +10,9 @@ namespace SofarKTLXLogger.SolarmanV5.Protocol;
 /// </summary>
 public class ProtocolRequest : ProtocolBase
 {
-    public Header Header { get; private init; } = null!;
-    public RequestPayload Payload { get; private init; } = null!;
-    public Trailer Trailer { get; private init; } = null!;
+    private Header Header { get; init; } = null!;
+    private RequestPayload Payload { get; init; } = null!;
+    private Trailer Trailer { get; init; } = null!;
     
     public static ProtocolRequest Deserialize(ReadOnlySequence<byte> data)
     {
@@ -32,12 +32,11 @@ public class ProtocolRequest : ProtocolBase
         return protocolRequest;
     }
     
-    public static byte[] Serialize<TFunction>(uint serialNumber, BaseFrame<TFunction> frame)
+    public static byte[] Serialize(uint serialNumber, Memory<byte> frame)
     {
-        var frameData = frame.GetFrameData();
         var header = new Header
         {
-            Length = (ushort)(0x0F + frameData.Length),
+            Length = (ushort)(0x0F + frame.Length),
             ControlCode = ControlCode.Request,
             Serial = 0x0000,
             LoggerSerial = serialNumber,
@@ -50,10 +49,17 @@ public class ProtocolRequest : ProtocolBase
             TotalWorkingTime = 0x00000000,
             PowerOnTime = 0x00000000,
             OffsetTime = 0x00000000,
-            ModbusRtuFrame = frameData,
+            ModbusRtuFrame = frame,
         };
 
         return ToBytes(header, payload);
+    }
+    
+    public static byte[] Serialize(uint serialNumber, ModbusFrame frame)
+    {
+        var frameData = frame.GetFrameData();
+        
+        return Serialize(serialNumber, frameData);
     }
 
     public override string ToString()

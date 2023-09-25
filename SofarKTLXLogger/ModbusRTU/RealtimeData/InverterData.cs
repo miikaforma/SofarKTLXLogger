@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using SofarKTLXLogger.Helpers;
+using SofarKTLXLogger.SolarmanV5.Protocol;
 
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
@@ -103,4 +104,38 @@ public record InverterData
         reader.TryRead(out var registerEnd);
         reader.TryRead(out var crc16);
     }
+
+    public void AddMetrics(ref Dictionary<string, object> dictionary)
+    {
+        PV1Voltage.AddMetric(dictionary);
+        PV1Current.AddMetric(dictionary);
+        PV2Voltage.AddMetric(dictionary);
+        PV2Current.AddMetric(dictionary);
+        PV1Power.AddMetric(dictionary);
+        PV2Power.AddMetric(dictionary);
+        OutputActivePower.AddMetric(dictionary);
+        OutputReactivePower.AddMetric(dictionary);
+        GridFrequency.AddMetric(dictionary);
+        L1Voltage.AddMetric(dictionary);
+        L1Current.AddMetric(dictionary);
+        L2Voltage.AddMetric(dictionary);
+        L2Current.AddMetric(dictionary);
+        L3Voltage.AddMetric(dictionary);
+        L3Current.AddMetric(dictionary);
+        TotalProduction.AddMetric(dictionary);
+        TotalGenerationTime.AddMetric(dictionary);
+        TodayProduction.AddMetric(dictionary);
+        TodayGenerationTime.AddMetric(dictionary);
+        InverterModuleTemperature.AddMetric(dictionary);
+        InverterInnerTemperature.AddMetric(dictionary);
+        InverterBusVoltage.AddMetric(dictionary);
+        PV1VoltageSample.AddMetric(dictionary);
+        PV1CurrentSample.AddMetric(dictionary);
+        CountdownTime.AddMetric(dictionary);
+        PV1InsulationImpedance.AddMetric(dictionary);
+        PV2InsulationImpedance.AddMetric(dictionary);
+        CathodeInsulationImpedance.AddMetric(dictionary);
+    }
+
+    public static InverterData FromProtocolResponse(ProtocolResponse response) => new(response.ModbusFrame);
 }

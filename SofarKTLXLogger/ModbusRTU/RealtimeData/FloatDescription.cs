@@ -20,4 +20,9 @@ public record FloatDescription(float Value, float Ratio, Unit Unit, string Metri
     public static FloatDescription FromInt16(ref SequenceReader<byte> reader, float ratio, Unit unit, string metric,
         string description) => new(reader.ReadBigEndianInt16ToFloat(ratio: ratio), ratio, unit,
         metric, description);
+
+    public void AddMetric(Dictionary<string, object> dictionary)
+    {
+        dictionary.Add(Metric, Value);
+    }
 }

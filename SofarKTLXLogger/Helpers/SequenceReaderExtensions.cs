@@ -175,4 +175,17 @@ public static class SequenceReaderExtensions
 
         return value * ratio;
     }
+    
+    public static float ReadBigEndianTwelveBitsToFloat(this ref SequenceReader<byte> reader, float ratio = 1f)
+    {
+        var span = reader.UnreadSpan;
+        var result = BinaryPrimitives.TryReadUInt16BigEndian(span, out var value);
+
+        if (result)
+        {
+            reader.Advance(sizeof(ushort) - 1);
+        }
+
+        return value * ratio;
+    }
 }

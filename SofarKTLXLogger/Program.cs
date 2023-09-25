@@ -7,8 +7,22 @@ namespace SofarKTLXLogger;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    // private static void Main(string[] args)
+    // {
+    //     // Create service collection
+    //     var serviceCollection = new ServiceCollection();
+    //     ConfigureServices(serviceCollection);
+    //
+    //     // Create service provider
+    //     IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
+    //
+    //     // Entry to run app
+    //     serviceProvider.GetService<Logger>()?.Run();
+    // }
+
+    private static async Task Main(string[] args)
     {
+        var cancellationTokenSource = new CancellationTokenSource();
         // Create service collection
         var serviceCollection = new ServiceCollection();
         ConfigureServices(serviceCollection);
@@ -17,7 +31,7 @@ internal class Program
         IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
 
         // Entry to run app
-        serviceProvider.GetService<Logger>()?.Run();
+        await serviceProvider.GetRequiredService<Logger>().RunAsync(cancellationTokenSource.Token);
     }
 
     private static void ConfigureServices(IServiceCollection serviceCollection)
@@ -52,6 +66,10 @@ internal class Program
         serviceCollection
             .AddOptions<RealTimeDataSettings>()
             .Bind(configuration.GetSection(RealTimeDataSettings.SectionName))
+            .ValidateOnStart();
+        serviceCollection
+            .AddOptions<InfluxDbSettings>()
+            .Bind(configuration.GetSection(InfluxDbSettings.SectionName))
             .ValidateOnStart();
 
         // SolarmanV5Client

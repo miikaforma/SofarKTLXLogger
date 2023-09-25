@@ -2,7 +2,7 @@
 
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
-public class ReadRealtimeData : BaseFrame<ReadRealtimeData>
+public class ReadRealtimeData : ModbusFrame
 {
     private readonly ushort _startingAddress;
     private readonly ushort _numberOfRegisters;

@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using SofarKTLXLogger.Helpers;
+using SofarKTLXLogger.SolarmanV5.Protocol;
 
 namespace SofarKTLXLogger.ModbusRTU.ProductInformation;
 
@@ -35,4 +36,6 @@ public record ProductInformation
         reader.TryRead(out var registerEnd);
         reader.TryRead(out var crc16);
     }
+
+    public static ProductInformation FromProtocolResponse(ProtocolResponse response) => new(response.ModbusFrame);
 }

@@ -2,7 +2,7 @@
 
 namespace SofarKTLXLogger.ModbusRTU.ProductInformation;
 
-public class ReadProductInformation : BaseFrame<ReadProductInformation>
+public class ReadProductInformation : ModbusFrame
 {
     private readonly ushort _startingAddress;
     private readonly ushort _numberOfRegisters;

@@ -2,14 +2,12 @@
 
 namespace SofarKTLXLogger.ModbusRTU;
 
-public abstract class BaseFrame<TFunction>
+public abstract class ModbusFrame
 {
     private readonly byte _deviceAddress;
     private readonly FunctionCode _functionCode;
-    public TFunction? Data;
-    public ushort Crc;
 
-    protected BaseFrame(byte deviceAddress, FunctionCode functionCode)
+    protected ModbusFrame(byte deviceAddress, FunctionCode functionCode)
     {
         _deviceAddress = deviceAddress;
         _functionCode = functionCode;
@@ -42,11 +40,11 @@ public abstract class BaseFrame<TFunction>
 
     protected abstract byte[] GetData();
     
-    private static ushort CalculateCrc16(byte[] data)
+    private static ushort CalculateCrc16(IReadOnlyList<byte> data)
     {
         ushort crc = 0xFFFF;
 
-        for (var i = 0; i < data.Length; i++)
+        for (var i = 0; i < data.Count; i++)
         {
             crc ^= data[i + 0];
 

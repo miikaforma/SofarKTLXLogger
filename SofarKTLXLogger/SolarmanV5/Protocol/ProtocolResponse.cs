@@ -7,11 +7,18 @@ namespace SofarKTLXLogger.SolarmanV5.Protocol;
 /// </summary>
 public class ProtocolResponse : ProtocolBase
 {
-    public Header Header { get; private init; } = null!;
-    public ResponsePayload Payload { get; private init; } = null!;
-    public Trailer Trailer { get; private init; } = null!;
+    private Header Header { get; init; } = null!;
+    private ResponsePayload Payload { get; init; } = null!;
+    private Trailer Trailer { get; init; } = null!;
 
-    public static ProtocolResponse Deserialize(ReadOnlySequence<byte> data)
+    public Memory<byte> ModbusFrame => Payload.ModbusRtuFrame;
+
+    public static ProtocolResponse FromMemory(Memory<byte> data)
+    {
+        return FromReadonlySequence(new ReadOnlySequence<byte>(data));
+    }
+    
+    public static ProtocolResponse FromReadonlySequence(ReadOnlySequence<byte> data)
     {
         var reader = new SequenceReader<byte>(data);
 

@@ -6,6 +6,7 @@ public class RealTimeDataSettings
 
     public ushort InverterStartRegister { get; set; } = 0x0000;
     public ushort InverterRegisterCount { get; set; } = 0x0028;
-    public ushort PvStartRegister { get; set; } = 0x0010;
-    public ushort PvRegisterCount { get; set; } = 0x0010;
+    public bool PvEnabled { get; set; }
+    public ushort PvStartRegister { get; set; } = 0x0105;
+    public ushort PvRegisterCount { get; set; } = 0x0018;
 }
