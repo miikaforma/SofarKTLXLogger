@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using SofarKTLXLogger.Daytime;
 using SofarKTLXLogger.Settings;
 using SofarKTLXLogger.SolarmanV5;
 
@@ -7,19 +10,6 @@ namespace SofarKTLXLogger;
 
 internal class Program
 {
-    // private static void Main(string[] args)
-    // {
-    //     // Create service collection
-    //     var serviceCollection = new ServiceCollection();
-    //     ConfigureServices(serviceCollection);
-    //
-    //     // Create service provider
-    //     IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
-    //
-    //     // Entry to run app
-    //     serviceProvider.GetService<Logger>()?.Run();
-    // }
-
     private static async Task Main(string[] args)
     {
         var cancellationTokenSource = new CancellationTokenSource();
@@ -34,7 +24,7 @@ internal class Program
         await serviceProvider.GetRequiredService<Logger>().RunAsync(cancellationTokenSource.Token);
     }
 
-    private static void ConfigureServices(IServiceCollection serviceCollection)
+    private static void ConfigureServices(IServiceCollection services)
     {
         // Build configuration
         var configuration = new ConfigurationBuilder()
@@ -43,36 +33,50 @@ internal class Program
             .AddEnvironmentVariables()
             .AddUserSecrets<Program>()
             .Build();
+        
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(configuration)
+            .CreateLogger();
 
         // Add instances to DI
-        serviceCollection.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<IConfiguration>(configuration);
+        
+        // Add Serilog
+        services.AddLogging(config => 
+        {
+            config.ClearProviders();
+            config.AddSerilog(dispose: true);
+        });
 
         // Add logger
-        serviceCollection.AddTransient<Logger>();
+        services.AddTransient<Logger>();
 
         // Add settings
-        serviceCollection
+        services
             .AddOptions<LoggerSettings>()
             .Bind(configuration.GetSection(LoggerSettings.SectionName))
             .ValidateOnStart();
-        serviceCollection
+        services
             .AddOptions<AppSettings>()
             .Bind(configuration.GetSection(AppSettings.SectionName))
             .ValidateOnStart();
-        serviceCollection
+        services
             .AddOptions<ProductInfoSettings>()
             .Bind(configuration.GetSection(ProductInfoSettings.SectionName))
             .ValidateOnStart();
-        serviceCollection
+        services
             .AddOptions<RealTimeDataSettings>()
             .Bind(configuration.GetSection(RealTimeDataSettings.SectionName))
             .ValidateOnStart();
-        serviceCollection
+        services
             .AddOptions<InfluxDbSettings>()
             .Bind(configuration.GetSection(InfluxDbSettings.SectionName))
             .ValidateOnStart();
 
         // SolarmanV5Client
-        serviceCollection.AddTransient<ISolarmanV5Client, SolarmanV5Client>();
+        services.AddTransient<ISolarmanV5Client, SolarmanV5Client>();
+        
+        // Other services
+        services.AddSingleton<IDaytimeService, DaytimeService>();
     }
 }

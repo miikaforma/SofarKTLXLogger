@@ -1,7 +1,9 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SofarKTLXLogger.Daytime;
 using SofarKTLXLogger.ModbusRTU.ProductInformation;
 using SofarKTLXLogger.ModbusRTU.RealtimeData;
 using SofarKTLXLogger.Settings;
@@ -11,23 +13,29 @@ namespace SofarKTLXLogger.SolarmanV5;
 
 public class SolarmanV5Client : ISolarmanV5Client
 {
+    private readonly ILogger<SolarmanV5Client> _logger;
     private readonly LoggerSettings _loggerSettings;
     private readonly AppSettings _appSettings;
     private readonly ProductInfoSettings _productInfoSettings;
     private readonly RealTimeDataSettings _realTimeDataSettings;
+    private readonly IDaytimeService _daytimeService;
 
     public Memory<byte> ResponseData { get; private set; }
 
     public SolarmanV5Client(IOptions<LoggerSettings> loggerSettings, IOptions<AppSettings> inverterSettings,
-        IOptions<ProductInfoSettings> productInfoSettings, IOptions<RealTimeDataSettings> realTimeDataSettings)
+        IOptions<ProductInfoSettings> productInfoSettings, IOptions<RealTimeDataSettings> realTimeDataSettings,
+        ILogger<SolarmanV5Client> logger, IDaytimeService daytimeService)
     {
+        _logger = logger;
+        _daytimeService = daytimeService;
         _loggerSettings = loggerSettings.Value;
         _appSettings = inverterSettings.Value;
         _productInfoSettings = productInfoSettings.Value;
         _realTimeDataSettings = realTimeDataSettings.Value;
     }
-    
-    public async Task<ProtocolResponse> SendAsync(Memory<byte> modbusFrame, CancellationToken cancellationToken = default)
+
+    public async Task<ProtocolResponse> SendAsync(Memory<byte> modbusFrame,
+        CancellationToken cancellationToken = default)
     {
         using var client = await GetClientAsync(cancellationToken);
 
@@ -43,7 +51,7 @@ public class SolarmanV5Client : ISolarmanV5Client
         var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
 
         ResponseData = buffer[..bytesRead];
-        
+
         return ProtocolResponse.FromMemory(ResponseData);
     }
 
@@ -52,7 +60,8 @@ public class SolarmanV5Client : ISolarmanV5Client
         using var client = GetClientAsync().Result;
 
         // Prepares the data to send.
-        var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadProductInformation(_productInfoSettings.StartRegister,
+        var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadProductInformation(
+            _productInfoSettings.StartRegister,
             _productInfoSettings.RegisterCount));
 
         // Send data to the server
@@ -66,13 +75,14 @@ public class SolarmanV5Client : ISolarmanV5Client
 
         return receivedBytes;
     }
-    
+
     public (byte[] Part1, byte[] Part2) GetRealtimeData()
     {
         using var client = GetClientAsync().Result;
 
         // Prepares the data to send.
-        var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadRealtimeData(_realTimeDataSettings.InverterStartRegister,
+        var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadRealtimeData(
+            _realTimeDataSettings.InverterStartRegister,
             _realTimeDataSettings.InverterRegisterCount));
 
         // Send data to the server
@@ -84,13 +94,14 @@ public class SolarmanV5Client : ISolarmanV5Client
         var bytesCount = stream.Read(receivedBytes, 0, receivedBytes.Length);
         // var receivedData = Encoding.ASCII.GetString(receivedBytes, 0, bytesCount);
 
-        var dataBytes2 = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadRealtimeData(_realTimeDataSettings.PvStartRegister,
+        var dataBytes2 = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, new ReadRealtimeData(
+            _realTimeDataSettings.PvStartRegister,
             _realTimeDataSettings.PvRegisterCount));
-        
+
         // Send data to the server
         var stream2 = client.GetStream();
         stream2.Write(dataBytes2, 0, dataBytes2.Length);
-        
+
         // Receives the response back from the server.
         var receivedBytes2 = new byte[1024];
         var bytesCount2 = stream2.Read(receivedBytes2, 0, receivedBytes2.Length);
@@ -120,7 +131,15 @@ public class SolarmanV5Client : ISolarmanV5Client
         }
         catch (SocketException ex)
         {
-            Console.WriteLine("Could not open socket");
+            if (await _daytimeService.IsDaytime())
+            {
+                _logger.LogWarning("Couldn't connect during daytime, is inverter/logger offline?");
+                _logger.LogDebug(ex, "Couldn't connect, inverter/logger probably offline");
+            }
+            else
+            {
+                _logger.LogDebug(ex, "Couldn't connect, inverter/logger probably offline");
+            }
             throw;
         }
     }
