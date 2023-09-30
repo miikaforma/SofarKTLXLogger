@@ -41,6 +41,8 @@ public class SolarmanV5Client : ISolarmanV5Client
 
         // Prepares the data to send.
         var dataBytes = ProtocolRequest.Serialize(_loggerSettings.SerialNumber, modbusFrame);
+        
+        _logger.LogTrace("Sent bytes: {Bytes}", dataBytes);
 
         // Send data to the server
         var stream = client.GetStream();
@@ -51,6 +53,8 @@ public class SolarmanV5Client : ISolarmanV5Client
         var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
 
         ResponseData = buffer[..bytesRead];
+        
+        _logger.LogTrace("Received bytes: {Bytes}", ResponseData);
 
         return ProtocolResponse.FromMemory(ResponseData);
     }

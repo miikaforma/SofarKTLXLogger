@@ -48,8 +48,9 @@ public class Logger
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         // await PrintProductInformation(cancellationToken: cancellationToken);
-
         // await PrintRealTimeInformation(cancellationToken: cancellationToken);
+        
+        _logger.LogInformation("Starting Logger");
         
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -70,6 +71,7 @@ public class Logger
             {
                 _logger.LogError(ex, 
                     "Error occurred executing {LogRealTimeInformation}", nameof(LogRealTimeInformation));
+                await Task.Delay(_appSettings.LoggingInterval, cancellationToken);
             }
         }
     }
@@ -105,14 +107,15 @@ public class Logger
 
     private async Task LogRealTimeInformation(CancellationToken cancellationToken = default)
     {
-        var metrics = new Dictionary<string, object>();
+        InverterData? inverterData = null;
+        PvData? pvData = null;
         try
         {
+            _logger.LogDebug("Logging real time information");
             var modbusFrame = new ReadRealtimeData(_realTimeDataSettings.InverterStartRegister,
                 _realTimeDataSettings.InverterRegisterCount).GetFrameData();
             var response = await _client.SendAsync(modbusFrame, cancellationToken: cancellationToken);
-            var inverterData = InverterData.FromProtocolResponse(response);
-            inverterData.AddMetrics(ref metrics);
+            inverterData = InverterData.FromProtocolResponse(response);
         }
         catch (SocketException)
         {
@@ -132,8 +135,7 @@ public class Logger
                 var modbusFrame = new ReadRealtimeData(_realTimeDataSettings.PvStartRegister,
                     _realTimeDataSettings.PvRegisterCount).GetFrameData();
                 var response = await _client.SendAsync(modbusFrame, cancellationToken: cancellationToken);
-                var pvData = PvData.FromProtocolResponse(response);
-                pvData.AddMetrics(ref metrics);
+                pvData = PvData.FromProtocolResponse(response);
             }
             catch (Exception ex)
             {
@@ -142,20 +144,31 @@ public class Logger
             }
         }
 
+        // Write results to InfluxDB
+        await WriteRealTimeInformationToInfluxDb(inverterData, pvData, cancellationToken);
+    }
+
+    private async Task WriteRealTimeInformationToInfluxDb(InverterData? inverterData, PvData? pvData, CancellationToken cancellationToken = default)
+    {
         try
         {
-            if (_influxDbSettings.Enabled)
+            if (_influxDbSettings.Enabled && (inverterData != null || pvData != null))
             {
-                var inverterData = new LineProtocolPoint(
+                var metrics = new Dictionary<string, object>();
+                
+                inverterData?.AddMetrics(ref metrics);
+                pvData?.AddMetrics(ref metrics);
+
+                var pointData = new LineProtocolPoint(
                     _influxDbSettings.MetricName,
                     metrics,
                     null,
                     DateTime.UtcNow);
 
                 var payload = new LineProtocolPayload();
-                payload.Add(inverterData);
-
-                var client = new LineProtocolClient(new Uri(_influxDbSettings.Address), _influxDbSettings.DbName);
+                payload.Add(pointData);
+                
+                var client = new LineProtocolClient(new Uri(_influxDbSettings.Address), _influxDbSettings.DbName, _influxDbSettings.Username, _influxDbSettings.Password);
                 var influxResult = await client.WriteAsync(payload, cancellationToken);
                 if (!influxResult.Success)
                     _logger.LogWarning("Error while saving data to InfluxDB. {ErrorMessage}",
@@ -166,57 +179,5 @@ public class Logger
         {
             _logger.LogWarning(ex, "Unknown error while saving data to InfluxDB");
         }
-    }
-
-    private void Testing()
-    {
-        // var fileBytes = File.ReadAllBytes("hwdata_request.bin");
-        // var rom = new ReadOnlyMemory<byte>(fileBytes);
-        // var sequence = new ReadOnlySequence<byte>(rom);
-        // Console.WriteLine(Protocol.DeserializeRequest(sequence));
-
-        #region Request creation
-
-        // var productInfoRequest = ProtocolRequest.Serialize(new ReadProductInformation(0x2000, 0x0E));
-        // Console.WriteLine(BitConverter.ToString(productInfoRequest.ToArray()).Replace("-", ""));
-        //
-        // var realtimeDataRequest = ProtocolRequest.Serialize(new ReadRealtimeData(0x0000, 0x0028));
-        // Console.WriteLine(BitConverter.ToString(realtimeDataRequest.ToArray()).Replace("-", ""));
-        //
-        // var realtimeDataRequest2 = ProtocolRequest.Serialize(new ReadRealtimeData(0x0010, 0x0010));
-        // Console.WriteLine(BitConverter.ToString(realtimeDataRequest2.ToArray()).Replace("-", ""));
-
-        #endregion
-
-        #region Response parsing
-
-        var hwDataResponse =
-            ProtocolResponse.FromReadonlySequence(
-                new ReadOnlySequence<byte>(File.ReadAllBytes("hwdata_sample.bin")));
-        var productInformation = new ProductInformation(hwDataResponse.ModbusFrame);
-        Console.WriteLine(productInformation);
-
-        var data1Response = ProtocolResponse.FromReadonlySequence(
-            new ReadOnlySequence<byte>(File.ReadAllBytes("inverter_response_faulty_test.bin")));
-        var inverterData = new InverterData(data1Response.ModbusFrame);
-        Console.WriteLine(inverterData);
-        ;
-
-        #endregion
-
-        // var request = ProtocolRequest.Deserialize(new ReadOnlySequence<byte>(File.ReadAllBytes("hwdata_request.bin")));
-        // Console.WriteLine("Request: " + BitConverter.ToString(request.ModbusFrame.ToArray()).Replace("-", ""));
-        //
-        // var response = ProtocolResponse.Deserialize(new ReadOnlySequence<byte>(File.ReadAllBytes("hwdata_sample.bin")));
-        // Console.WriteLine("Response: " + BitConverter.ToString(response.ModbusFrame.ToArray()).Replace("-", ""));
-
-
-        //var sofarSocket = new InverterClient();
-        // var hwData = sofarSocket.GetHwData();
-        // File.WriteAllBytes("hwdata.bin", hwData);
-
-        //var rtData = sofarSocket.GetRealtimeData();
-        //File.WriteAllBytes("rtData_1.bin", rtData.Part1);
-        //File.WriteAllBytes("rtData_2.bin", rtData.Part2);
     }
 }

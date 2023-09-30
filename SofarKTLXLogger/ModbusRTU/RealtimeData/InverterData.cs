@@ -137,5 +137,5 @@ public record InverterData
         CathodeInsulationImpedance.AddMetric(dictionary);
     }
 
-    public static InverterData FromProtocolResponse(ProtocolResponse response) => new(response.ModbusFrame);
+    public static InverterData FromProtocolResponse(ProtocolResponse response) => new(response.GetSpecificFunctionFrame(FunctionCode.ReadRealTimeData));
 }

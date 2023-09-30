@@ -19,6 +19,14 @@ internal class Program
 
         // Create service provider
         IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
+        
+        // Example log level prints
+        Log.Verbose("Verbose");
+        Log.Debug("Debug");
+        Log.Information("Information");
+        Log.Warning("Warning");
+        Log.Error("Error");
+        Log.Fatal("Fatal");
 
         // Entry to run app
         await serviceProvider.GetRequiredService<Logger>().RunAsync(cancellationTokenSource.Token);

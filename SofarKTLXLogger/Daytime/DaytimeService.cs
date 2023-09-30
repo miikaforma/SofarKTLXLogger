@@ -55,7 +55,9 @@ public class DaytimeService : IDaytimeService
     private bool IsDayTime(Result result)
     {
         var dateTimeNow = DateNow().ToUniversalTime();
-        return dateTimeNow > result.Sunrise && dateTimeNow < result.Sunset;
+        _logger.LogTrace("DateTimeNow: {DateTimeNow} | Sunrise: {Sunrise} | Sunset: {Sunset}", dateTimeNow,
+            result.Sunrise, result.Sunset);
+        return dateTimeNow >= result.Sunrise && dateTimeNow <= result.Sunset;
     }
 
     private async Task<Result?> GetSunsetSunriseResult()
@@ -103,7 +105,13 @@ public class DaytimeService : IDaytimeService
     {
         var utcTime = DateTime.UtcNow;
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(_appSettings.TimeZone);
-        return TimeZoneInfo.ConvertTime(utcTime, timeZone);
+        var localTime = TimeZoneInfo.ConvertTime(utcTime, timeZone);
+        
+        // Calculate offset
+        var offset = timeZone.GetUtcOffset(localTime);
+   
+        // Return DateTimeOffset
+        return new DateTimeOffset(localTime, offset);
     }
 
     private DateTimeOffset GetLocalDateTimeOffset(DateTimeOffset dateTimeOffset)
