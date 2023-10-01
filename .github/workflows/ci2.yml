@@ -194,6 +194,7 @@ jobs:
 
   create_release:
     needs: [buildVariables, build]
+    permissions: read-all|write-all
     name: Create a new release
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.version_level != 'commit' }}
