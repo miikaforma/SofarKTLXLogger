@@ -56,9 +56,12 @@ public class Logger
         {
             try
             {
+                // Create a CancellationToken that gets canceled after a timeout period
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_appSettings.Timeout));
+                
                 if (await _daytimeService.IsDaytime())
                 {
-                    await LogRealTimeInformation(cancellationToken: cancellationToken);
+                    await LogRealTimeInformation(cancellationToken: cts.Token);
                 }
                 else
                 {
