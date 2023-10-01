@@ -154,12 +154,19 @@ jobs:
           tar -czf ./artifacts/linux-amd64.tar.gz -C publish/linux/amd64 .
           tar -czf ./artifacts/linux-arm64.tar.gz -C publish/linux/arm64 .
 
-      - name: Archive artifact
+      - name: Archive amd64 artifact
         uses: actions/upload-artifact@v3
         with:
-          name: result
+          name: linux-amd64
           path: |
-            ./artifacts
+            ./artifacts/linux-amd64.tar.gz
+
+      - name: Archive arm64 artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-arm64
+          path: |
+            ./artifacts/linux-arm64.tar.gz
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -177,7 +184,7 @@ jobs:
         id: multiarch_build
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./publish
           platforms: linux/amd64,linux/arm64
           file: ./publish/Dockerfile
           push: ${{ inputs.push }}
@@ -218,4 +225,4 @@ jobs:
           prerelease: false
           allowUpdates: true
           updateOnlyUnreleased: true
-          artifacts: result
+          artifacts: "linux-amd64,linux-arm64"
