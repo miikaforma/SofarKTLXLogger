@@ -194,7 +194,20 @@ jobs:
 
   create_release:
     needs: [buildVariables, build]
-    permissions: read-all|write-all
+    permissions:
+      actions: write
+      checks: write
+      contents: write
+      deployments: write
+      id-token: write
+      issues: write
+      discussions: write
+      packages: write
+      pages: write
+      pull-requests: write
+      repository-projects: write
+      security-events: write
+      statuses: write    
     name: Create a new release
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.version_level != 'commit' }}
