@@ -203,11 +203,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # - name: Download artifacts
-      #   uses: actions/download-artifact@v3
-      #   with:
-      #     name: result
-      #     path: ./artifacts
+      - name: Download amd64 artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-amd64
+
+      - name: Download arm64 artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-arm64
 
       - name: Create Release
         id: create_release
@@ -225,4 +229,4 @@ jobs:
           prerelease: false
           allowUpdates: true
           updateOnlyUnreleased: true
-          artifacts: "linux-amd64,linux-arm64"
+          artifacts: "linux-amd64/*,linux-arm64/*"
