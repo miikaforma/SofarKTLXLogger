@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  sofar-ktlx-logger:
+    image: miikaforma/sofar-ktlx-logger:latest
+    volumes:
+      - type: bind
+        source: ./Logs
+        target: /app/Logs
+    # Could also just override the appsettings.json inside the container
+    #  - ./appsettings.json:/app/appsettings.json
+    environment: 
+      LOGGER__IP: '127.0.0.1'
+      LOGGER__PORT: '8899'
+      LOGGER__SERIALNUMBER: '2387654321'
+      INFLUXDB__ENABLED: 'true'
+      INFLUXDB__ADDRESS: 'http://influxdb:8086'
+      INFLUXDB__DBNAME: 'solarman'
+      INFLUXDB__METRICNAME: 'InverterData'
+      APP__TIMEOUT: '5000'
+      APP__LOGGINGINTERVAL: '30000'
+      APP__TIMEZONE: 'Europe/Helsinki'
+      APP__LATITUDE: '41.303921'
+      APP__LONGITUDE: '-81.901693'
+      SERILOG__MINIMUMLEVEL__DEFAULT: 'Information' # Verbose, Debug, Information, Warning, Error, Fatal
+      SERILOG__MINIMUMLEVEL__OVERRIDE__MICROSOFT: 'Warning'
+      SERILOG__MINIMUMLEVEL__OVERRIDE__SYSTEM: 'Warning'
+      SERILOG__WRITETO__0__NAME: Console
+      SERILOG__WRITETO__0__ARGS__RESTRICTEDTOMINIMUMLEVEL: Verbose
+      SERILOG__WRITETO__1__NAME: File
+      SERILOG__WRITETO__1__ARGS__PATH: Logs/log-.txt
+      SERILOG__WRITETO__1__ARGS__ROLLINGINTERVAL: Day
+      SERILOG__WRITETO__1__ARGS__RESTRICTEDTOMINIMUMLEVEL: Debug
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
