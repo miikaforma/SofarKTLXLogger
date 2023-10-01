@@ -207,11 +207,13 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: linux-amd64
+          path: ./artifacts/linux-amd64
 
       - name: Download arm64 artifacts
         uses: actions/download-artifact@v3
         with:
           name: linux-arm64
+          path: ./artifacts/linux-arm64
 
       - name: Create Release
         id: create_release
@@ -229,4 +231,4 @@ jobs:
           prerelease: false
           allowUpdates: true
           updateOnlyUnreleased: true
-          artifacts: "linux-amd64/*,linux-arm64/*"
+          artifacts: "./artifacts/linux-amd64/linux-amd64.tar.gz,./artifacts/linux-arm64/linux-arm64.tar.gz"
