@@ -6,11 +6,6 @@ using SofarKTLXLogger.Settings;
 
 namespace SofarKTLXLogger.Daytime;
 
-public interface IDaytimeService
-{
-    Task<bool> IsDaytime();
-}
-
 public class DaytimeService : IDaytimeService
 {
     private const string ApiEndpoint = "https://api.sunrise-sunset.org/json";
@@ -39,7 +34,7 @@ public class DaytimeService : IDaytimeService
             return IsDayTime(result);
         }
 
-        var fetchedResult = await GetSunsetSunriseResult();
+        var fetchedResult = await GetSunsetSunriseResult(dateNow);
         if (fetchedResult == null)
         {
             // On error, return true to continue fetching
@@ -60,7 +55,7 @@ public class DaytimeService : IDaytimeService
         return dateTimeNow >= result.Sunrise && dateTimeNow <= result.Sunset;
     }
 
-    private async Task<Result?> GetSunsetSunriseResult()
+    private async Task<Result?> GetSunsetSunriseResult(DateTime dateNow)
     {
         try
         {
@@ -73,7 +68,7 @@ public class DaytimeService : IDaytimeService
                 Method = HttpMethod.Get,
                 RequestUri =
                     new Uri(
-                        $"{ApiEndpoint}?lat={_appSettings.Latitude}&lng={_appSettings.Longitude}&formatted=0&date=today"),
+                        $"{ApiEndpoint}?lat={_appSettings.Latitude}&lng={_appSettings.Longitude}&formatted=0&date={dateNow:yyyy-MM-dd}"),
             };
             using var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -88,7 +83,7 @@ public class DaytimeService : IDaytimeService
                 return null;
             }
 
-            _logger.LogDebug("New daytime fetched with sunrise at {Sunrise} and sunset at {Sunset}",
+            _logger.LogInformation("New daytime fetched with sunrise at {Sunrise} and sunset at {Sunset}",
                 GetLocalDateTimeOffset(resultResponse.Result.Sunrise),
                 GetLocalDateTimeOffset(resultResponse.Result.Sunset));
 
