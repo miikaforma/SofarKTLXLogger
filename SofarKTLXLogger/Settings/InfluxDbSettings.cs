@@ -10,4 +10,5 @@ public class InfluxDbSettings
     public string? Password { get; set; }
     public required string DbName { get; set; }
     public string MetricName { get; set; } = "InverterData";
+    public int Timeout { get; set; } = 10_000; // 10 seconds by default
 }

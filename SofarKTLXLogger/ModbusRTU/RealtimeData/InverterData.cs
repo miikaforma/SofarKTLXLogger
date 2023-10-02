@@ -138,4 +138,6 @@ public record InverterData
     }
 
     public static InverterData FromProtocolResponse(ProtocolResponse response) => new(response.GetSpecificFunctionFrame(FunctionCode.ReadRealTimeData));
+
+    public string DataPreview => $"Current: {OperatingState} at {OutputActivePower} | Today: {TodayProduction} ({TodayGenerationTime})";
 }

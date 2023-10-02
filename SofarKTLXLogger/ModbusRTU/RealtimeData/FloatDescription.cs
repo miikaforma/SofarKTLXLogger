@@ -25,4 +25,9 @@ public record FloatDescription(float Value, float Ratio, Unit Unit, string Metri
     {
         dictionary.Add(Metric, Value);
     }
+
+    public override string ToString()
+    {
+        return $"{Math.Round(Value, 2, MidpointRounding.AwayFromZero)}{Unit.UnitToString()}";
+    }
 }

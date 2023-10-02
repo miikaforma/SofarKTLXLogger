@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,13 @@ public class SolarmanV5Client : ISolarmanV5Client
     public async Task<ProtocolResponse> SendAsync(Memory<byte> modbusFrame,
         CancellationToken cancellationToken = default)
     {
+        if (_appSettings.OfflineMode)
+        {
+            ResponseData = await File.ReadAllBytesAsync("inverter_response.bin", cancellationToken);
+            _logger.LogTrace("Returning fake data: {Bytes}", ResponseData);
+            return ProtocolResponse.FromMemory(ResponseData);
+        }
+        
         using var client = await GetClientAsync(cancellationToken);
 
         // Prepares the data to send.
@@ -44,17 +52,22 @@ public class SolarmanV5Client : ISolarmanV5Client
 
         // Send data to the server
         var stream = client.GetStream();
+        var watch = Stopwatch.StartNew();
         await stream.WriteAsync(dataBytes, cancellationToken: cancellationToken);
+        watch.Stop();
         
-        _logger.LogTrace("Sent bytes: {Bytes}", dataBytes);
+        _logger.LogTrace("Sent bytes (in {Ms}ms): {Bytes}", watch.Elapsed.TotalMilliseconds, dataBytes);
 
         // Receives the response back from the server.
         var buffer = new Memory<byte>(new byte[1024]);
-        var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
 
+        watch.Restart();
+        var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+        watch.Stop();
+        
         ResponseData = buffer[..bytesRead];
         
-        _logger.LogTrace("Received bytes: {Bytes}", ResponseData);
+        _logger.LogTrace("Received bytes (in {Ms}ms): {Bytes}", watch.Elapsed.TotalMilliseconds, ResponseData);
 
         return ProtocolResponse.FromMemory(ResponseData);
     }
@@ -124,8 +137,8 @@ public class SolarmanV5Client : ISolarmanV5Client
             // Create a TcpClient.
             var client = new TcpClient(AddressFamily.InterNetwork)
             {
-                ReceiveTimeout = _appSettings.Timeout,
-                SendTimeout = _appSettings.Timeout
+                ReceiveTimeout = _loggerSettings.Timeout,
+                SendTimeout = _loggerSettings.Timeout
             };
 
             // Establish a connection.
