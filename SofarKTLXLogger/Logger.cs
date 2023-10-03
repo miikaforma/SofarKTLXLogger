@@ -128,7 +128,7 @@ public class Logger
 
             _logger.LogDebug("{DataPreview}", inverterData.DataPreview);
         }
-        catch (SocketException)
+        catch (Exception ex) when (ex is OperationCanceledException or SocketException)
         {
             // If couldn't connect, cancel
             return;

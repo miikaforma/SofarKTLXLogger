@@ -146,16 +146,15 @@ public class SolarmanV5Client : ISolarmanV5Client
 
             return client;
         }
-        catch (SocketException ex)
+        catch (Exception ex) when (ex is OperationCanceledException or SocketException)
         {
             if (await _daytimeService.IsDaytime())
             {
                 _logger.LogWarning("Couldn't connect during daytime, is inverter/logger offline?");
-                _logger.LogDebug(ex, "Couldn't connect, inverter/logger probably offline");
             }
             else
             {
-                _logger.LogDebug(ex, "Couldn't connect, inverter/logger probably offline");
+                _logger.LogDebug("Couldn't connect, inverter/logger probably offline");
             }
             throw;
         }
