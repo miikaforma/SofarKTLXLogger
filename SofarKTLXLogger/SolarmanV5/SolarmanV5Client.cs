@@ -131,8 +131,16 @@ public class SolarmanV5Client : ISolarmanV5Client
     {
         try
         {
-            // Parse the server's IP address.
-            var ipAddress = IPAddress.Parse(_loggerSettings.Ip);
+            // Parse the server's IP address or resolve domain name to IP address.
+            if (!IPAddress.TryParse(_loggerSettings.Ip, out var ipAddress))
+            {
+                var addresses = await Dns.GetHostAddressesAsync(_loggerSettings.Ip, cancellationToken);
+                ipAddress = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
+                if (ipAddress == null)
+                {
+                    throw new Exception("Unable to resolve domain name to an IPv4 address.");
+                }
+            }
 
             // Create a TcpClient.
             var client = new TcpClient(AddressFamily.InterNetwork)
