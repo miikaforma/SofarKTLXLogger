@@ -1,7 +1,7 @@
 ﻿CREATE TABLE solarman_inverter_data (
     time TIMESTAMPTZ NOT NULL,
-    plant_id INT,
-    device_id INT,
+    plant_id INT NOT NULL,
+    device_id INT NOT NULL,
     operating_state INT,
     fault1 INT,
     fault2 INT,
