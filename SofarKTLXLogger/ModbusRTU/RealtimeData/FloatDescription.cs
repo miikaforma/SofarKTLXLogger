@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using Npgsql;
 using SofarKTLXLogger.Helpers;
 
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
@@ -24,6 +25,11 @@ public record FloatDescription(float Value, float Ratio, Unit Unit, string Metri
     public void AddMetric(Dictionary<string, object> dictionary)
     {
         dictionary.Add(Metric, Value);
+    }
+    
+    public void AddMetric(NpgsqlParameterCollection parameterCollection)
+    {
+        parameterCollection.AddWithValue(Metric, Value);
     }
 
     public override string ToString()

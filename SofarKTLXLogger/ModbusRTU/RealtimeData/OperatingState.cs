@@ -1,4 +1,6 @@
-﻿namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
+﻿using Npgsql;
+
+namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
 public enum OperatingState : byte
 {
@@ -7,4 +9,12 @@ public enum OperatingState : byte
     Normal = 0x02,
     Fault = 0x03,
     Permanent = 0x04,
+}
+
+public static class OperatingStateExtensions
+{
+    public static void AddMetric(this OperatingState operatingState, NpgsqlParameterCollection parameterCollection)
+    {
+        parameterCollection.AddWithValue("OperatingState", (int)operatingState);
+    }
 }

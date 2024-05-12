@@ -1,5 +1,8 @@
 ﻿// ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
+
+using Npgsql;
+
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
 [Flags]
@@ -22,4 +25,12 @@ public enum Fault4 : ushort
     reserved2 = 1 << 13,
     reserved3 = 1 << 14,
     reserved4 = 1 << 15,
+}
+
+public static class Fault4Extensions
+{
+    public static void AddMetric(this Fault4 fault, NpgsqlParameterCollection parameterCollection)
+    {
+        parameterCollection.AddWithValue("Fault4", (int)fault);
+    }
 }

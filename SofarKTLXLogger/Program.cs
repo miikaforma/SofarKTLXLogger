@@ -80,6 +80,11 @@ internal class Program
             .AddOptions<InfluxDbSettings>()
             .Bind(configuration.GetSection(InfluxDbSettings.SectionName))
             .ValidateOnStart();
+        services
+            .AddOptions<TimescaleDbSettings>()
+            .Bind(configuration.GetSection(TimescaleDbSettings.SectionName))
+            .ValidateOnStart();
+
 
         // SolarmanV5Client
         services.AddTransient<ISolarmanV5Client, SolarmanV5Client>();

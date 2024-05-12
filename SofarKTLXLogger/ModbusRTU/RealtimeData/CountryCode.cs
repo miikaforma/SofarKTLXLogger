@@ -1,5 +1,8 @@
 ﻿// ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
+
+using Npgsql;
+
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
 public enum CountryCode
@@ -52,4 +55,12 @@ public enum CountryCode
     Dubai = 46,
     Croatia = 107,
     Lithuania = 108,
+}
+
+public static class CountryCodeExtensions
+{
+ public static void AddMetric(this CountryCode countryCode, NpgsqlParameterCollection parameterCollection)
+ {
+  parameterCollection.AddWithValue("CountryCode", (int)countryCode);
+ }
 }

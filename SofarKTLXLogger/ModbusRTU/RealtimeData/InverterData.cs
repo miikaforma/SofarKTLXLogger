@@ -2,6 +2,7 @@
 // ReSharper disable IdentifierTypo
 
 using System.Buffers;
+using Npgsql;
 using SofarKTLXLogger.Helpers;
 using SofarKTLXLogger.SolarmanV5.Protocol;
 
@@ -135,6 +136,48 @@ public record InverterData
         PV1InsulationImpedance.AddMetric(dictionary);
         PV2InsulationImpedance.AddMetric(dictionary);
         CathodeInsulationImpedance.AddMetric(dictionary);
+    }
+
+    public void AddMetrics(NpgsqlParameterCollection parameterCollection)
+    {
+        OperatingState.AddMetric(parameterCollection);
+        Fault1.AddMetric(parameterCollection);
+        Fault2.AddMetric(parameterCollection);
+        Fault3.AddMetric(parameterCollection);
+        Fault4.AddMetric(parameterCollection);
+        Fault5.AddMetric(parameterCollection);
+        PV1Voltage.AddMetric(parameterCollection);
+        PV1Current.AddMetric(parameterCollection);
+        PV2Voltage.AddMetric(parameterCollection);
+        PV2Current.AddMetric(parameterCollection);
+        PV1Power.AddMetric(parameterCollection);
+        PV2Power.AddMetric(parameterCollection);
+        OutputActivePower.AddMetric(parameterCollection);
+        OutputReactivePower.AddMetric(parameterCollection);
+        GridFrequency.AddMetric(parameterCollection);
+        L1Voltage.AddMetric(parameterCollection);
+        L1Current.AddMetric(parameterCollection);
+        L2Voltage.AddMetric(parameterCollection);
+        L2Current.AddMetric(parameterCollection);
+        L3Voltage.AddMetric(parameterCollection);
+        L3Current.AddMetric(parameterCollection);
+        TotalProduction.AddMetric(parameterCollection);
+        TotalGenerationTime.AddMetric(parameterCollection);
+        TodayProduction.AddMetric(parameterCollection);
+        TodayGenerationTime.AddMetric(parameterCollection);
+        InverterModuleTemperature.AddMetric(parameterCollection);
+        InverterInnerTemperature.AddMetric(parameterCollection);
+        InverterBusVoltage.AddMetric(parameterCollection);
+        PV1VoltageSample.AddMetric(parameterCollection);
+        PV1CurrentSample.AddMetric(parameterCollection);
+        CountdownTime.AddMetric(parameterCollection);
+        InverterAlertMessage.AddMetric(parameterCollection);
+        InputMode.AddMetric(parameterCollection);
+        CommunicationBoardInnerMessage.AddMetric(parameterCollection);
+        PV1InsulationImpedance.AddMetric(parameterCollection);
+        PV2InsulationImpedance.AddMetric(parameterCollection);
+        CathodeInsulationImpedance.AddMetric(parameterCollection);
+        CountryCode.AddMetric(parameterCollection);
     }
 
     public static InverterData FromProtocolResponse(ProtocolResponse response) => new(response.GetSpecificFunctionFrame(FunctionCode.ReadRealTimeData));

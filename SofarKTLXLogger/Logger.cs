@@ -4,6 +4,7 @@ using InfluxDB.LineProtocol.Client;
 using InfluxDB.LineProtocol.Payload;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using SofarKTLXLogger.Daytime;
 using SofarKTLXLogger.Helpers;
 using SofarKTLXLogger.ModbusRTU.ProductInformation;
@@ -24,15 +25,17 @@ public class Logger
     private readonly LoggerSettings _loggerSettings;
     private readonly AppSettings _appSettings;
     private readonly IDaytimeService _daytimeService;
+    private readonly TimescaleDbSettings _timescaleDbSettings;
 
     public Logger(ISolarmanV5Client client, IOptions<ProductInfoSettings> productInfoSettings,
         IOptions<RealTimeDataSettings> realTimeDataSettings, IOptions<InfluxDbSettings> influxDbSettings,
         ILogger<Logger> logger, IDaytimeService daytimeService, IOptions<AppSettings> appSettings,
-        IOptions<LoggerSettings> loggerSettings)
+        IOptions<LoggerSettings> loggerSettings, IOptions<TimescaleDbSettings> timescaleDbSettings)
     {
         _client = client;
         _logger = logger;
         _daytimeService = daytimeService;
+        _timescaleDbSettings = timescaleDbSettings.Value;
         _loggerSettings = loggerSettings.Value;
         _appSettings = appSettings.Value;
         _productInfoSettings = productInfoSettings.Value;
@@ -116,6 +119,7 @@ public class Logger
     {
         InverterData? inverterData = null;
         PvData? pvData = null;
+        var timestamp = DateTime.UtcNow;
         try
         {
             _logger.LogDebug("Logging real time information");
@@ -125,6 +129,7 @@ public class Logger
                 cancellationToken.ExtendWithDelayedToken(TimeSpan.FromMilliseconds(_loggerSettings.Timeout));
             var response = await _client.SendAsync(modbusFrame, cancellationToken: cts.Token);
             inverterData = InverterData.FromProtocolResponse(response);
+            timestamp = DateTime.UtcNow;
 
             _logger.LogDebug("{DataPreview}", inverterData.DataPreview);
         }
@@ -158,10 +163,13 @@ public class Logger
         }
 
         // Write results to InfluxDB
-        await WriteRealTimeInformationToInfluxDb(inverterData, pvData, cancellationToken);
+        await WriteRealTimeInformationToInfluxDb(inverterData, pvData, timestamp, cancellationToken);
+        
+        // Write results to TimescaleDB
+        await WriteRealTimeInformationToTimescaleDb(inverterData, timestamp, cancellationToken);
     }
 
-    private async Task WriteRealTimeInformationToInfluxDb(InverterData? inverterData, PvData? pvData,
+    private async Task WriteRealTimeInformationToInfluxDb(InverterData? inverterData, PvData? pvData, DateTime timestamp,
         CancellationToken cancellationToken = default)
     {
         try
@@ -177,7 +185,7 @@ public class Logger
                     _influxDbSettings.MetricName,
                     metrics,
                     null,
-                    DateTime.UtcNow);
+                    timestamp);
 
                 var payload = new LineProtocolPayload();
                 payload.Add(pointData);
@@ -190,6 +198,58 @@ public class Logger
                 if (!influxResult.Success)
                     _logger.LogWarning("Error while saving data to InfluxDB. {ErrorMessage}",
                         influxResult.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unknown error while saving data to InfluxDB");
+        }
+    }
+    
+    private async Task WriteRealTimeInformationToTimescaleDb(InverterData? inverterData, DateTime timestamp,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (_timescaleDbSettings.Enabled && inverterData != null)
+            {
+                try
+                {
+                    await using var conn = new NpgsqlConnection(_timescaleDbSettings.ConnectionString);
+                    await conn.OpenAsync(cancellationToken);
+
+                    await using var cmd = new NpgsqlCommand($@"INSERT INTO {_timescaleDbSettings.TableName} 
+(time, plant_id, device_id, operating_state, fault1, fault2, fault3, fault4, fault5, 
+ solar_voltage_pv1, solar_current_pv1, solar_voltage_pv2, solar_current_pv2, 
+ solar_power_pv1, solar_power_pv2, output_power_active, output_power_reactive, 
+ grid_freq_frequency, output_voltage_l1, output_current_l1, output_voltage_l2, 
+ output_current_l2, output_voltage_l3, output_current_l3, solar_production_total, 
+ solar_time_total, solar_production_today, solar_time_today, inverter_temp_module, 
+ inverter_temp_inner, inverter_voltage_bus, inverter_voltage_pv1_voltage_sample, 
+ inverter_current_pv1_current_sample, inverter_countdown_time, inverter_alert_message, 
+ input_mode, communication_board_inner_message, inverter_insulation_pv1, inverter_insulation_pv2, 
+ cathode_insulation_impedance, country_code) 
+VALUES (@time, @plant_id, @device_id, @OperatingState, @Fault1, @Fault2, @Fault3, @Fault4, @Fault5, 
+        @SolarVoltage_PV1, @SolarCurrent_PV1, @SolarVoltage_PV2, @SolarCurrent_PV2, 
+        @SolarPower_PV1, @SolarPower_PV2, @OutputPower_Active, @OutputPower_Reactive, 
+        @OutputFreq_Frequency, @OutputVoltage_L1, @OutputCurrent_L1, @OutputVoltage_L2, 
+        @OutputCurrent_L2, @OutputVoltage_L3, @OutputCurrent_L3, @SolarProduction_Total, 
+        @SolarTime_Total, @SolarProduction_Today, @SolarTime_Today, @InverterTemp_Module, 
+        @InverterTemp_Inner, @InverterVoltage_Bus, @InverterVoltage_PV1VoltageSample, @InverterCurrent_PV1CurrentSample, @InverterCountdown_Time, @InverterAlertMessage, 
+        @InputMode, @CommunicationBoardInnerMessage, @InverterInsulation_PV1, @InverterInsulation_PV2, 
+        @InverterInsulation_PV, @CountryCode)", conn);
+                    cmd.Parameters.AddWithValue("time", timestamp);
+                    cmd.Parameters.AddWithValue("plant_id", _timescaleDbSettings.PlantId);
+                    cmd.Parameters.AddWithValue("device_id", _timescaleDbSettings.DeviceId);
+                    
+                    inverterData.AddMetrics(cmd.Parameters);
+
+                    await cmd.ExecuteNonQueryAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error writing to TimescaleDB");
+                }
             }
         }
         catch (Exception ex)

@@ -1,5 +1,8 @@
 ﻿// ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
+
+using Npgsql;
+
 namespace SofarKTLXLogger.ModbusRTU.RealtimeData;
 
 [Flags]
@@ -22,4 +25,12 @@ public enum InverterAlertMessage : ushort
     reserved9 = 1 << 13,
     reserved10 = 1 << 14,
     reserved11 = 1 << 15,
+}
+
+public static class InverterAlertMessageExtensions
+{
+    public static void AddMetric(this InverterAlertMessage alertMessage, NpgsqlParameterCollection parameterCollection)
+    {
+        parameterCollection.AddWithValue("InverterAlertMessage", (int)alertMessage);
+    }
 }
